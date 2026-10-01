@@ -1,0 +1,425 @@
+<div align="center">
+  <img src="https://github.com/user-attachments/assets/a55539bd-768a-4d89-a4cf-c22fff7315d1" alt="xBooM-BAILEYS" height="300" />
+  
+  <p>A <b>Professional</b>, <b>Highly Optimized</b> & <b>Clean</b> WebSocket-based JavaScript library for interacting with the WhatsApp Web API.</p>
+  
+  <p>
+  </p>
+  
+  <p>
+    <a href="#-overview">Overview</a> •
+    <a href="#-features">Features</a> •
+    <a href="#-installation">Installation</a> •
+    <a href="#-connecting">Connect Bot</a> •
+    <a href="#-buttons">Buttons</a> •
+    <a href="#-channel-media">Channel Media</a> •
+    <a href="#-core-api">Core API</a> •
+    <a href="#-support">Support</a>
+  </p>
+</div>
+
+---
+
+## 🌟 Overview
+
+**xBooM-BAILEYS** is a modified, **100% pure & clean custom fork** of Baileys (by WhiskeySockets, MIT licensed). All hidden tracking endpoints, background data collection, and annoying developer auto-follow newsletter scripts have been completely stripped out to ensure maximum privacy, safety, and background performance for your automated bots.
+
+Optimized specifically to power the **xBooM** WhatsApp bot framework.
+
+> [!NOTE]
+> This fork is **not** a rewrite — it's a drop-in replacement. All original Baileys APIs work exactly the same way.
+
+---
+
+## ⚡ Features
+
+<div align="center">
+
+| Feature | Description | Status |
+|:---|:---|:---:|
+| 📦 **2GB Large File Streaming** | Seamless streaming & direct upload/download of large files up to **2GB** without exhausting server RAM | ✅ |
+| 🚀 **Deep Performance** | Lightweight structure optimized for **low-spec hosting** servers & automated business workflows | ✅ |
+| 🎨 **Interactive Buttons** | Full support for **buttons**, **list messages**, **template buttons** & interactive UI | ✅ |
+| 📢 **Channel Media Send** | Send images, videos, audio & documents directly to **WhatsApp Channels** | ✅ |
+| ⚡ **Fast Response** | Optimized message handling for **instant replies** with minimal latency | ✅ |
+| 📱 **Multi-Device** | Supports WhatsApp **Multi-Device** & Web versions | ✅ |
+| 🔐 **Signal Protocol** | End-to-end encryption via **libsignal** protocol | ✅ |
+| 🎭 **Custom Pairing** | Connect via **QR Code** or **Pairing Code** | ✅ |
+
+</div>
+
+---
+
+## 📦 Installation
+
+```bash
+npm install xboom-baileys
+```
+
+---
+
+## 🔌 Connecting
+
+### 📱 Method 1: QR Code
+
+```javascript
+import makeWASocket, { useMultiFileAuthState } from 'xboom-baileys'
+import P from 'pino'
+
+async function startBot() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+
+    const sock = makeWASocket({
+        auth: state,
+        logger: P({ level: 'silent' }),
+        printQRInTerminal: true,
+        browser: ['xBooM-BAILEYS', 'Chrome', '1.0.0']
+    })
+
+    sock.ev.on('creds.update', saveCreds)
+
+    sock.ev.on('connection.update', ({ connection }) => {
+        if (connection === 'open') {
+            console.log('✅ Bot connected!')
+        }
+    })
+
+    return sock
+}
+
+startBot()
+```
+
+### 🔢 Method 2: Pairing Code
+
+```javascript
+import makeWASocket, { useMultiFileAuthState } from 'xboom-baileys'
+import P from 'pino'
+
+async function startBotWithPairing() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+
+    const sock = makeWASocket({
+        auth: state,
+        logger: P({ level: 'silent' }),
+        printQRInTerminal: false,
+        browser: ['xBooM-BAILEYS', 'Chrome', '1.0.0']
+    })
+
+    if (!sock.authState.creds.registered) {
+        const phoneNumber = '94771234567'
+        const pairingCode = await sock.requestPairingCode(phoneNumber)
+        console.log('🔢 Your Pairing Code:', pairingCode)
+    }
+
+    sock.ev.on('creds.update', saveCreds)
+
+    sock.ev.on('connection.update', ({ connection }) => {
+        if (connection === 'open') {
+            console.log('✅ Bot connected via pairing code!')
+        }
+    })
+
+    return sock
+}
+
+startBotWithPairing()
+```
+
+### 🔄 Auto Reconnect
+
+```javascript
+import makeWASocket, { 
+    useMultiFileAuthState, 
+    DisconnectReason,
+    fetchLatestBaileysVersion 
+} from 'xboom-baileys'
+import { Boom } from '@hapi/boom'
+import P from 'pino'
+
+async function connectToWhatsApp() {
+    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+    const { version } = await fetchLatestBaileysVersion()
+
+    const sock = makeWASocket({
+        version,
+        auth: state,
+        logger: P({ level: 'silent' }),
+        printQRInTerminal: true,
+        browser: ['xBooM-BAILEYS', 'Chrome', '1.0.0'],
+        defaultQueryTimeoutMs: 120000,
+        connectTimeoutMs: 60000,
+        enableAutoSessionRecreation: true,
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
+    })
+
+    sock.ev.on('connection.update', (update) => {
+        const { connection, lastDisconnect } = update
+
+        if (connection === 'close') {
+            const statusCode = (lastDisconnect?.error as Boom)?.output?.statusCode
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut
+
+            console.log(`❌ Disconnected. Code: ${statusCode}`)
+
+            if (shouldReconnect) {
+                setTimeout(() => connectToWhatsApp(), 3000)
+            } else {
+                console.log('🚪 Logged out. Please scan QR again.')
+            }
+        } else if (connection === 'open') {
+            console.log('✅ Connected to WhatsApp!')
+        }
+    })
+
+    sock.ev.on('creds.update', saveCreds)
+
+    return sock
+}
+
+connectToWhatsApp()
+```
+
+---
+
+## 🎨 Buttons
+
+### 🔘 Simple Buttons
+
+```javascript
+await sock.sendMessage(jid, {
+    text: '🎯 *Choose an option:*',
+    footer: 'xBooM-BAILEYS',
+    buttons: [
+        {
+            buttonId: 'btn_yes',
+            buttonText: { displayText: '✅ Yes' },
+            type: 1
+        },
+        {
+            buttonId: 'btn_no',
+            buttonText: { displayText: '❌ No' },
+            type: 1
+        },
+        {
+            buttonId: 'btn_maybe',
+            buttonText: { displayText: '🤔 Maybe' },
+            type: 1
+        }
+    ],
+    headerType: 1
+}, { quoted: m })
+```
+
+### 🔗 URL Buttons
+
+```javascript
+await sock.sendMessage(jid, {
+    text: '🌐 *Visit our website:*',
+    footer: 'xBooM-BAILEYS',
+    buttons: [
+        {
+            buttonId: 'url_btn',
+            buttonText: { displayText: '🌐 Open Website' },
+            type: 1
+        }
+    ],
+    headerType: 1
+})
+```
+
+### 📋 List Message (Menu)
+
+```javascript
+await sock.sendMessage(jid, {
+    text: '📋 *Main Menu*\n\nPlease select an option below:',
+    footer: '© xBooM-BAILEYS',
+    title: '🎯 Bot Menu',
+    buttonText: '📂 Open Menu',
+    sections: [
+        {
+            title: '👤 User Commands',
+            rows: [
+                { title: '👤 My Profile', rowId: 'cmd_profile', description: 'View your profile' },
+                { title: '⚙️ Settings', rowId: 'cmd_settings', description: 'Change settings' },
+                { title: '📊 Statistics', rowId: 'cmd_stats', description: 'View bot stats' }
+            ]
+        },
+        {
+            title: '🎮 Fun Commands',
+            rows: [
+                { title: '🎲 Roll Dice', rowId: 'cmd_dice' },
+                { title: '🎰 Spin Wheel', rowId: 'cmd_spin' },
+                { title: '🎯 Truth or Dare', rowId: 'cmd_tod' }
+            ]
+        },
+        {
+            title: '🛠️ Admin Commands',
+            rows: [
+                { title: '🔨 Ban User', rowId: 'cmd_ban' },
+                { title: '📢 Broadcast', rowId: 'cmd_broadcast' }
+            ]
+        }
+    ]
+}, { quoted: m })
+```
+
+### 📨 Handle Button Responses
+
+```javascript
+sock.ev.on('messages.upsert', async ({ messages, type }) => {
+    const m = messages[0]
+    if (!m.message) return
+
+    const buttonResponse = m.message?.buttonsResponseMessage
+    if (buttonResponse) {
+        const selectedId = buttonResponse.selectedButtonId
+        const selectedText = buttonResponse.selectedDisplayText
+
+        console.log(`User clicked: ${selectedId} (${selectedText})`)
+
+        switch (selectedId) {
+            case 'btn_yes':
+                await sock.sendMessage(m.key.remoteJid, { text: '✅ You said YES!' })
+                break
+            case 'btn_no':
+                await sock.sendMessage(m.key.remoteJid, { text: '❌ You said NO!' })
+                break
+            case 'btn_maybe':
+                await sock.sendMessage(m.key.remoteJid, { text: '🤔 Maybe...' })
+                break
+        }
+    }
+
+    const listResponse = m.message?.listResponseMessage
+    if (listResponse) {
+        const selectedRow = listResponse.singleSelectReply?.selectedRowId
+        console.log(`User selected: ${selectedRow}`)
+
+        if (selectedRow === 'cmd_profile') {
+            await sock.sendMessage(m.key.remoteJid, { text: '👤 *Your Profile*\nName: User' })
+        }
+    }
+
+    const templateResponse = m.message?.templateButtonReplyMessage
+    if (templateResponse) {
+        console.log(`Template clicked: ${templateResponse.selectedId}`)
+    }
+})
+```
+
+---
+
+## 📢 Channel Media
+
+### 🎵 Send Audio to Channel
+
+```javascript
+await sock.newsletterSendMedia(channelJid, {
+    audio: { url: 'https://example.com/audio.mp3' },
+    mimetype: 'audio/mp3',
+    ptt: false
+})
+```
+
+---
+
+## 💖 Send Reaction
+
+```javascript
+await sock.sendMessage(jid, {
+    react: {
+        text: '❤️',
+        key: m.key
+    }
+})
+```
+
+---
+
+## 🛠️ Core API
+
+### 📨 Messaging
+
+```javascript
+await sock.sendMessage(jid, { text: 'Hi' })           // Text
+await sock.sendMessage(jid, { image: { url } })       // Image
+await sock.sendMessage(jid, { video: { url } })       // Video
+await sock.sendMessage(jid, { audio: { url } })       // Audio
+await sock.sendMessage(jid, { document: { url } })    // Document
+await sock.sendMessage(jid, { sticker: { url } })     // Sticker
+await sock.sendMessage(jid, { react: { text, key } }) // Reaction
+await sock.sendMessage(jid, { delete: msg.key })      // Delete
+await sock.sendMessage(jid, { edit: msg.key, text })  // Edit
+```
+
+### 👥 Groups
+
+```javascript
+await sock.groupCreate(name, participants)
+await sock.groupParticipantsUpdate(jid, [user], 'add')
+await sock.groupUpdateSubject(jid, 'New Name')
+await sock.groupUpdateDescription(jid, 'New Desc')
+await sock.groupSettingUpdate(jid, 'announcement')
+await sock.groupLeave(jid)
+await sock.groupMetadata(jid)
+await sock.groupInviteCode(jid)
+```
+
+---
+
+## 🔐 Session Management
+
+```javascript
+import { useMultiFileAuthState } from 'xboom-baileys'
+
+const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys')
+
+const sock = makeWASocket({ auth: state })
+
+sock.ev.on('creds.update', saveCreds)
+```
+
+---
+
+## 📚 Documentation
+
+### Events
+
+| Event | Description |
+|:---|:---|
+| `connection.update` | Connection state changes (open, close, connecting) |
+| `creds.update` | Authentication credentials updated |
+| `messages.upsert` | New messages received |
+| `messages.update` | Message status updates (read, delivered) |
+| `message-receipt.update` | Read receipts |
+| `groups.update` | Group metadata changes |
+| `group-participants.update` | Group members added/removed/promoted |
+| `call` | Incoming call events |
+| `presence.update` | Contact presence (online, typing) |
+
+---
+
+## 🙏 Credits
+
+- **Original Baileys** by [@WhiskeySockets](https://github.com/WhiskeySockets/Baileys)
+- **libsignal** by [@signal](https://github.com/signalapp/libsignal-protocol-javascript)
+- **All contributors** who made this project possible
+
+---
+
+## ⚠️ Disclaimer
+
+> This project is **not affiliated, associated, authorized, endorsed by, or in any way officially connected** with WhatsApp or any of its subsidiaries or affiliates.
+>
+> The official WhatsApp website can be found at [whatsapp.com](https://whatsapp.com). "WhatsApp" as well as related names, marks, emblems and images are registered trademarks of their respective owners.
+>
+> **Use at your own discretion.** Do not spam people with this. We discourage any stalkerware, bulk or automated messaging usage.
+
+---
+
+<div align="center">
+  <p>Made with ❤️ by xBooM</p>
+
+</div>

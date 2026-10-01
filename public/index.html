@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>xBooM Pair</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+         font-family: system-ui, sans-serif; background: linear-gradient(135deg,#0f0a28,#2a1a7a); color:#fff; padding:16px; }
+  .card { width:100%; max-width:420px; background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.15);
+          border-radius:20px; padding:24px; backdrop-filter: blur(8px); }
+  h1 { margin:0 0 4px; font-size:28px; }
+  p.sub { margin:0 0 18px; color:#b8c3ff; font-size:14px; }
+  label { display:block; font-size:13px; color:#b8c3ff; margin:12px 0 6px; }
+  input, textarea { width:100%; padding:12px; border-radius:10px; border:1px solid rgba(255,255,255,.2);
+          background:rgba(0,0,0,.35); color:#fff; font-size:16px; }
+  textarea { height:110px; font-size:12px; word-break:break-all; }
+  button { width:100%; margin-top:16px; padding:13px; border:0; border-radius:10px; font-size:16px; font-weight:600;
+           background:#6c7bff; color:#fff; cursor:pointer; }
+  button:disabled { opacity:.5; }
+  .code { font-size:34px; letter-spacing:4px; text-align:center; font-weight:700; margin:14px 0 4px;
+          background:rgba(0,0,0,.35); border-radius:12px; padding:14px; }
+  .msg { font-size:14px; color:#b8c3ff; text-align:center; margin-top:8px; }
+  .err { color:#ff8a8a; }
+  .warn { font-size:12px; color:#ffd479; margin-top:12px; }
+  .hide { display:none; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>xBooM Pair</h1>
+  <p class="sub">Get a pairing code. Your SESSION_ID is sent to your WhatsApp.</p>
+
+  <label for="num">WhatsApp number (country code, no +)</label>
+  <input id="num" type="tel" inputmode="numeric" placeholder="94771234567" autocomplete="off">
+
+  <div id="keyBox">
+    <label for="key">Access key (if required)</label>
+    <input id="key" type="password" autocomplete="off">
+  </div>
+
+  <button id="go">Get pairing code</button>
+
+  <div id="codeBox" class="hide">
+    <div class="code" id="code"></div>
+    <div class="msg">WhatsApp &rarr; Linked devices &rarr; Link a device &rarr; <b>Link with phone number instead</b>, then type this code.</div>
+  </div>
+
+  <div class="msg" id="status"></div>
+
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const status = (t, err) => { $('status').textContent = t; $('status').className = 'msg' + (err ? ' err' : '') }
+
+$('go').onclick = async () => {
+  $('go').disabled = true
+  $('codeBox').classList.add('hide')
+  status('Connecting to WhatsApp... (up to 25 seconds)')
+  try {
+    const r = await fetch('/api/pair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: $('num').value, key: $('key').value })
+    })
+    const j = await r.json().catch(() => ({}))
+    if (!r.ok || !j.code) throw new Error(j.error || 'Request failed')
+    $('code').textContent = j.code
+    $('codeBox').classList.remove('hide')
+    status('Enter the code in WhatsApp within 4 minutes. Your SESSION_ID will then arrive in your own WhatsApp chat (Message yourself).')
+  } catch (e) {
+    status(e.message, true)
+  }
+  $('go').disabled = false
+}
+</script>
+</body>
+</html>

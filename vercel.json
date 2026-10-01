@@ -1,0 +1,5 @@
+{
+  "functions": {
+    "api/pair.js": { "maxDuration": 300 }
+  }
+}
